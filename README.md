@@ -1,0 +1,1 @@
+This is a sample monorepo with a React SPA and a Rails API.
