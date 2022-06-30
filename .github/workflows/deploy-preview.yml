@@ -1,0 +1,93 @@
+name: Deploy preview
+
+on: 
+  pull_request:
+
+defaults:
+  run:
+    working-directory: web
+
+env:
+  staging-api: my-heroku-staging-app
+  netlify-app: my-netlify-staging-app
+
+jobs:
+  install:
+    name: Install Dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - name: Cancel Previous Runs
+        uses: styfle/cancel-workflow-action@0.9.1
+        with:
+          access_token: ${{ github.token }}
+      - uses: actions/checkout@v2.3.4
+      - name: cache dependencies
+        id: cache-node-modules
+        uses: actions/cache@v2
+        with:
+          path: '**/node_modules'
+          key: ${{ runner.os }}-modules-${{ hashFiles('**/yarn.lock') }}-v1
+      - name: install dependencies
+        run: |
+          yarn install --frozen-lockfile
+
+  build-and-deploy:
+    name: Build and deploy
+    needs: install
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2.3.4
+      - uses: actions/cache@v2
+        with:
+          path: '**/node_modules'
+          key: ${{ runner.os }}-modules-${{ hashFiles('**/yarn.lock') }}-v1
+
+      - name: Set API app and Netlify alias from input
+        if: github.event.inputs.api-heroku-app != 0
+        run: |
+          echo "REACT_APP_API_URL=https://${{ github.event.inputs.api-heroku-app }}.herokuapp.com" >> $GITHUB_ENV
+          echo "NETLIFY_ALIAS=deploy-preview" >> $GITHUB_ENV
+
+      - name: Set API app and Netlify alias from PR
+        if: github.event.inputs.api-heroku-app == 0
+        run: |
+          echo "REACT_APP_API_URL=https://${{ env.staging-api }}-pr-${{ github.event.number }}.herokuapp.com" >> $GITHUB_ENV
+          echo "NETLIFY_ALIAS=deploy-preview-${{ github.event.number }}" >> $GITHUB_ENV
+
+      - name: start deployment
+        uses: bobheadxi/deployments@v0.6.2
+        id: deployment
+        with:
+          step: start
+          token: ${{ secrets.GITHUB_TOKEN }}
+          env: ${{ env.NETLIFY_ALIAS }}
+          ref: ${{ github.head_ref }}
+
+      - name: Build and deploy to netlify
+        run: |
+          echo "Using API URL: ${{ env.REACT_APP_API_URL }}"
+          echo "Using Netlify alias: ${{ env.NETLIFY_ALIAS }}"
+          echo "window.env = { REACT_APP_API_URL: '${{ env.REACT_APP_API_URL }}' }" > public/env-config.js
+          export NETLIFY_AUTH_TOKEN=${{ secrets.NETLIFY_AUTH_TOKEN }}
+          export NETLIFY_SITE_ID=${{ secrets.NETLIFY_SITE_ID }}
+          npx netlify deploy --build --context deploy-preview --alias ${{ env.NETLIFY_ALIAS }} -m "PR ${{ github.event.number }} ${{ github.head_ref }} commit ${{ github.sha }}"
+
+      - name: Comment link to deploy
+        if: github.event.name == 'pull_request'
+        uses: marocchino/sticky-pull-request-comment@v2.2.0
+        with:
+          header: deploy-preview
+          recreate: true
+          message: |
+            Deploy preview link: <https://${{ env.NETLIFY_ALIAS }}--${{ env.netlify-app }}.netlify.app>
+            Latest commit deployed: ${{ github.sha }}
+
+      - name: Update deployment status
+        uses: bobheadxi/deployments@v0.6.2
+        if: always()
+        with:
+          step: finish
+          token: ${{ secrets.GITHUB_TOKEN }}
+          status: ${{ job.status }}
+          deployment_id: ${{ steps.deployment.outputs.deployment_id }}
+          env_url: https://${{ env.NETLIFY_ALIAS }}--${{ env.netlify-app }}.netlify.app

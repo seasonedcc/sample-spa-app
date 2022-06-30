@@ -1,0 +1,33 @@
+name: Prune deployments
+
+on:
+  pull_request:
+    types: [ closed ]
+  workflow_dispatch:
+    inputs:
+      deploy-env:
+        description: 'The deploy env to be pruned'
+        required: true
+
+jobs:
+  prune:
+    name: Prune
+    runs-on: ubuntu-latest
+    steps:
+    - name: set deploy env from input
+      if: github.event.inputs.deploy-env != 0
+      run: |
+        echo "DEPLOY_ENV=${{ github.event.inputs.deploy-env }}" >> $GITHUB_ENV
+
+    - name: set deploy env from branch
+      if: github.event.inputs.deploy-env == 0
+      run: |
+        echo "DEPLOY_ENV=deploy-preview-${{ github.event.number }}" >> $GITHUB_ENV
+
+    - name: mark environment as deactivated
+      uses: bobheadxi/deployments@v0.6.2
+      with:
+        step: deactivate-env
+        token: ${{ secrets.GITHUB_TOKEN }}
+        env: ${{ env.DEPLOY_ENV }}
+        desc: Deployment was pruned

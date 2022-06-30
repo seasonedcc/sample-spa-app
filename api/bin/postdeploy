@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+
+set -u
+
+psql -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public; GRANT ALL ON SCHEMA public TO public;" "$DATABASE_URL"
+pg_dump -Fc "$STAGING_DATABASE_URL" | pg_restore --verbose --no-acl --no-owner --dbname "$DATABASE_URL"
+curl -n -X PATCH https://api.heroku.com/apps/$HEROKU_APP_NAME/config-vars \
+  -d "{
+  \"REACT_APP_URL\": \"https://deploy-preview-$HEROKU_PR_NUMBER--<my-netlify-staging-app>.netlify.app\",
+  \"APP_URL\": \"https://$HEROKU_APP_NAME.herokuapp.com\"
+}"  \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/vnd.heroku+json; version=3" \
+  -H "Authorization: Bearer $HEROKU_API_KEY"
+rake db:migrate

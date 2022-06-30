@@ -1,12 +1,11 @@
 import * as React from 'react'
-
-const API_URL = process.env.REACT_APP_API_URL
+import { getBaseURL } from './App'
 
 const Todo = () => {
   const [todos, setTodos] = React.useState()
 
   React.useEffect(() => {
-    fetch(`${API_URL}/todos`)
+    fetch(`${getBaseURL()}/todos`)
       .then(response => response.json())
       .then(data => setTodos(data));
   }, [])  

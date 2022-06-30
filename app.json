@@ -1,24 +1,40 @@
 {
-  "buildpacks": [
-    {
-      "url": "https://github.com/heroku/heroku-buildpack-inline"
-    },
-    {
-      "url": "heroku/ruby"
-    }
-  ],
-  "addons": [
-    "heroku-postgresql:hobby-dev",
-    "heroku-redis:hobby-dev"
-  ],
-  "formation": {
-    "web": {
-      "quantity": 1,
-      "size": "free"
-    },
-    "worker": {
-      "quantity": 1,
-      "size": "free"
+  "environments": {
+    "review": {
+      "stack": "heroku-20",
+      "buildpacks": [
+        {
+          "url": "https://github.com/heroku/heroku-buildpack-inline"
+        },
+        {
+          "url": "https://github.com/commonlit/heroku-buildpack-shared-build-cache"
+        },
+        {
+          "url": "heroku/ruby"
+        }
+      ],
+      "addons": [
+        "heroku-postgresql:hobby-dev",
+        "heroku-redis:hobby-dev"
+      ],
+      "scripts": {
+        "postdeploy": "bin/postdeploy"
+      },
+      "env": {
+        "SHARED_BUILD_CACHE_APP_NAME": {
+          "required": true
+        }
+      },
+      "formation": {
+        "web": {
+          "quantity": 1,
+          "size": "free"
+        },
+        "worker": {
+          "quantity": 1,
+          "size": "free"
+        }
+      }
     }
   }
 }
