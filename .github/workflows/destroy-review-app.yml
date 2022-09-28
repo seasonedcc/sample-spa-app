@@ -1,0 +1,19 @@
+# in .github/workflows/review-app.yml
+name: Heroku Review App
+on:
+  pull_request:
+    types: [closed]
+  pull_request_target:
+    types: [closed]
+
+jobs:
+  heroku-review-application:
+    name: Destroy Heroku review app
+    runs-on: ubuntu-latest
+    steps:
+      - name: Heroku Review Application
+        uses: rodrigoea/pr-heroku-review-app@master
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          heroku_api_token: ${{ secrets.HEROKU_API_TOKEN }}
+          heroku_pipeline_id: ${{ secrets.HEROKU_PIPELINE_ID }}
